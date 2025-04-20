@@ -47,68 +47,80 @@ async function autoPostToGroups(content, groupLinks) {
       console.log("Đang đợi bài đăng xuất hiện...");
       await new Promise((resolve) => setTimeout(resolve, 20000));
 
-      try {
-        console.log("Bắt đầu tìm kiếm div...");
+      // Tìm và lưu thông tin các thẻ <a> phù hợp
+      const anchorInfo = await page.evaluate(() => {
+        const targetDivs = Array.from(document.querySelectorAll("div")).filter(
+          (div) => div.getAttribute("aria-posinset") === "1"
+        );
 
-        const result = await page.evaluate(() => {
-          const targetClass =
-            "xdj266r x11i5rnm x1mh8g0r x18d9i69 x1cy8zhl x78zum5 x1q0g3np xod5an3 xz9dl7a x1ye3gou xn6708d";
-          // Tìm div với class cụ thể
-          const divElements = document.getElementsByClassName(targetClass);
+        return targetDivs.flatMap((div) =>
+          Array.from(div.querySelectorAll("a"))
+            .map((link) => ({
+              href: link.href,
+              outerHTML: link.outerHTML,
+              text: link.innerText,
+            }))
+            .filter((a) => a.text.length > 100)
+        );
+      });
 
-          console.log("=== DANH SÁCH DIV TÌM THẤY ===");
-          console.log("Số lượng div:", divElements.length);
-
-          // Convert HTMLCollection thành array để có thể return
-          const divsArray = Array.from(divElements).map((div, index) => {
-            console.log(`\n=== DIV ${index + 1} ===`);
-            console.log(div.outerHTML);
-            return div.outerHTML;
-          });
-
-          return {
-            count: divElements.length,
-            divs: divsArray,
-          };
+      if (anchorInfo.length > 0) {
+        console.log("✅ Tìm thấy các thẻ <a> có text > 100 ký tự:");
+        anchorInfo.forEach((a, idx) => {
+          console.log(`🔗 Link #${idx + 1}:`);
+          console.log(" - Href:", a.href);
+          console.log(" - Text length:", a.text.length);
+          console.log(" - HTML:", a.outerHTML);
         });
 
-        console.log("\n=== KẾT QUẢ TÌM KIẾM ===");
-        console.log("Số lượng div tìm thấy:", result.count);
-        result.divs.forEach((html, index) => {
-          console.log(`\n=== DIV ${index + 1} ===`);
-          console.log(html);
+        // Click vào thẻ <a> đầu tiên có text > 100
+        const didClick = await page.evaluate(() => {
+          const targetDivs = Array.from(
+            document.querySelectorAll("div")
+          ).filter((div) => div.getAttribute("aria-posinset") === "1");
+
+          for (const div of targetDivs) {
+            const links = Array.from(div.querySelectorAll("a"));
+            for (const link of links) {
+              if (link.innerText.length > 100) {
+                link.click();
+                return true;
+              }
+            }
+          }
+          return false;
         });
 
-        postedLinks.push({
-          group: groupLink,
-          status: "success",
-          content: content,
-          postedAt: new Date().toISOString(),
-          divFound: result.count > 0,
-        });
-      } catch (error) {
-        console.log("Lỗi khi tìm div:", error.message);
-        postedLinks.push({
-          group: groupLink,
-          status: "error",
-          error: error.message,
-          content: content,
-          postedAt: new Date().toISOString(),
-        });
+        if (didClick) {
+          console.log("✅ Đã click vào thẻ <a> đầu tiên có text > 100.");
+        } else {
+          console.log("⚠️ Không thể click vào thẻ <a>.");
+        }
+      } else {
+        console.log("❌ Không tìm thấy thẻ <a> phù hợp (text > 100).");
       }
 
-      // Đợi 5 giây trước khi tiếp tục
+      postedLinks.push({
+        group: groupLink,
+        status: "success",
+        content: content,
+        postedAt: new Date().toISOString(),
+        linksFound: anchorInfo.length > 0,
+        links: anchorInfo,
+      });
+
       await new Promise((resolve) => setTimeout(resolve, 5000));
     } catch (e) {
       postedLinks.push({
         group: groupLink,
         status: "error",
         error: e.message,
+        content: content,
+        postedAt: new Date().toISOString(),
       });
     }
   }
 
-  await browser.close();
   fs.writeFileSync("posted_links.json", JSON.stringify(postedLinks, null, 2));
 
   return postedLinks;
