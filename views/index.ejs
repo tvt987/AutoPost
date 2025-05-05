@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary-color: #4267b2;
+        --secondary-color: #898f9c;
+        --success-color: #42b72a;
+        --error-color: #dc3545;
+        --background-color: #f0f2f5;
+        --card-background: #ffffff;
+      }
+
+      body {
+        background-color: var(--background-color);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        min-height: 100vh;
+        padding: 20px 0;
+      }
+
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      .app-header {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+
+      .app-title {
+        color: var(--primary-color);
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 0;
+        padding: 1rem 0;
+      }
+
+      .card {
+        background: var(--card-background);
+        border-radius: 20px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        border: none;
+        overflow: hidden;
+        transition: transform 0.3s ease;
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+      }
+
+      .card-header {
+        background: linear-gradient(135deg, #4267b2, #5b7bd5);
+        color: white;
+        border: none;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card-header::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          45deg,
+          rgba(255, 255, 255, 0.1) 0%,
+          rgba(255, 255, 255, 0) 100%
+        );
+        z-index: 1;
+      }
+
+      .card-body {
+        padding: 2rem;
+      }
+
+      .form-control {
+        border: 2px solid #e4e6eb;
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background-color: #f5f6f7;
+      }
+
+      .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(66, 103, 178, 0.15);
+        background-color: #ffffff;
+      }
+
+      .form-label {
+        font-weight: 600;
+        color: #1c1e21;
+        margin-bottom: 0.5rem;
+      }
+
+      .btn-primary {
+        background: var(--primary-color);
+        border: none;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+      }
+
+      .btn-primary:hover {
+        background: #365899;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(66, 103, 178, 0.2);
+      }
+
+      .preview-image {
+        max-width: 120px;
+        max-height: 120px;
+        object-fit: cover;
+        border-radius: 12px;
+        margin: 5px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease;
+      }
+
+      .preview-image:hover {
+        transform: scale(1.05);
+      }
+
+      .image-preview-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-top: 15px;
+        padding: 10px;
+        background: #f5f6f7;
+        border-radius: 12px;
+        min-height: 100px;
+      }
+
+      .result-item {
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        border: 1px solid #e4e6eb;
+        transition: all 0.3s ease;
+      }
+
+      .result-item:hover {
+        transform: translateX(5px);
+        border-left: 4px solid var(--primary-color);
+      }
+
+      .status-success {
+        color: var(--success-color);
+        font-weight: 600;
+      }
+
+      .status-error {
+        color: var(--error-color);
+        font-weight: 600;
+      }
+
+      .alert {
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border: none;
+      }
+
+      .alert-success {
+        background-color: #edf7ed;
+        color: #1e4620;
+      }
+
+      .alert-danger {
+        background-color: #fdeded;
+        color: #5f2120;
+      }
+
+      .file-upload {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+      }
+
+      .file-upload-label {
+        display: block;
+        padding: 15px;
+        background: #f5f6f7;
+        border: 2px dashed #e4e6eb;
+        border-radius: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .file-upload-label:hover {
+        border-color: var(--primary-color);
+        background: #f8f9fa;
+      }
+
+      .file-upload-label i {
+        font-size: 24px;
+        color: var(--secondary-color);
+        margin-bottom: 8px;
+      }
+
+      #images {
+        display: none;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          padding: 0 15px;
+        }
+
+        .card-body {
+          padding: 1.5rem;
+        }
+
+        .app-title {
+          font-size: 2rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header class="app-header">
+        <h1 class="app-title">
+          <i class="fab fa-facebook"></i> Facebook Auto Post
+        </h1>
+      </header>
+
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0">Đăng bài tự động vào nhóm</h4>
+        </div>
+        <div class="card-body">
+          <% if (message) { %>
+          <div
+            class="alert alert-success alert-dismissible fade show"
+            role="alert"
+          >
+            <i class="fas fa-check-circle me-2"></i>
+            <%= message %>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="alert"
+              aria-label="Close"
+            ></button>
+          </div>
+          <% } %> <% if (error) { %>
+          <div
+            class="alert alert-danger alert-dismissible fade show"
+            role="alert"
+          >
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <%= error %>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="alert"
+              aria-label="Close"
+            ></button>
+          </div>
+          <% } %>
+
+          <form action="/post" method="POST" enctype="multipart/form-data">
+            <div class="mb-4">
+              <label for="content" class="form-label">
+                <i class="fas fa-pen me-2"></i>Nội dung bài viết
+              </label>
+              <textarea
+                class="form-control"
+                id="content"
+                name="content"
+                rows="4"
+                required
+                placeholder="Nhập nội dung bài viết của bạn..."
+              ></textarea>
+            </div>
+
+            <div class="mb-4">
+              <label for="groupLinks" class="form-label">
+                <i class="fas fa-users me-2"></i>Danh sách nhóm
+              </label>
+              <textarea
+                class="form-control"
+                id="groupLinks"
+                name="groupLinks"
+                rows="4"
+                required
+                placeholder="Nhập link các nhóm (mỗi link một dòng)..."
+              ></textarea>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label">
+                <i class="fas fa-images me-2"></i>Ảnh (tối đa 5 ảnh)
+              </label>
+              <div class="file-upload">
+                <label for="images" class="file-upload-label">
+                  <i class="fas fa-cloud-upload-alt d-block"></i>
+                  Kéo thả ảnh vào đây hoặc click để chọn
+                </label>
+                <input
+                  type="file"
+                  class="form-control"
+                  id="images"
+                  name="images"
+                  multiple
+                  accept="image/*"
+                />
+              </div>
+              <div class="image-preview-container" id="imagePreview">
+                <!-- Preview images will be added here -->
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="fas fa-paper-plane me-2"></i>Đăng bài
+            </button>
+          </form>
+
+          <% if (result) { %>
+          <div class="mt-5">
+            <h5 class="mb-4">
+              <i class="fas fa-clipboard-check me-2"></i>
+              Kết quả đăng bài
+            </h5>
+            <% result.forEach((item, index) => { %>
+            <div class="result-item">
+              <p class="mb-2">
+                <strong>
+                  <i class="fas fa-users me-2"></i>
+                  Nhóm <%= index + 1 %>:
+                </strong>
+                <a
+                  href="<%= item.group %>"
+                  target="_blank"
+                  class="text-primary"
+                >
+                  <%= item.group %>
+                </a>
+              </p>
+              <p class="mb-2">
+                <strong>
+                  <i class="fas fa-info-circle me-2"></i>
+                  Trạng thái:
+                </strong>
+                <span
+                  class="<%= item.status === 'success' ? 'status-success' : 'status-error' %>"
+                >
+                  <%= item.status %>
+                </span>
+              </p>
+              <% if (item.error) { %>
+              <p class="mb-2 text-danger">
+                <strong>
+                  <i class="fas fa-exclamation-triangle me-2"></i>
+                  Lỗi:
+                </strong>
+                <%= item.error %>
+              </p>
+              <% } %> <% if (item.postLink) { %>
+              <p class="mb-0">
+                <strong>
+                  <i class="fas fa-link me-2"></i>
+                  Link bài viết:
+                </strong>
+                <a
+                  href="<%= item.postLink %>"
+                  target="_blank"
+                  class="text-primary"
+                >
+                  <%= item.postLink %>
+                </a>
+              </p>
+              <% } %>
+            </div>
+            <% }); %>
+          </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Xử lý preview ảnh
+      const dropZone = document.querySelector(".file-upload-label");
+      const fileInput = document.getElementById("images");
+      const previewContainer = document.getElementById("imagePreview");
+
+      // Xử lý kéo thả
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("file-upload-label-dragover");
+      });
+
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("file-upload-label-dragover");
+      });
+
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("file-upload-label-dragover");
+        fileInput.files = e.dataTransfer.files;
+        handleFiles(fileInput.files);
+      });
+
+      // Xử lý click chọn file
+      fileInput.addEventListener("change", (e) => {
+        handleFiles(e.target.files);
+      });
+
+      function handleFiles(files) {
+        previewContainer.innerHTML = "";
+
+        for (const file of files) {
+          if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const img = document.createElement("img");
+              img.src = e.target.result;
+              img.classList.add("preview-image");
+
+              const imgContainer = document.createElement("div");
+              imgContainer.classList.add("position-relative");
+              imgContainer.appendChild(img);
+
+              previewContainer.appendChild(imgContainer);
+            };
+            reader.readAsDataURL(file);
+          }
+        }
+      }
+    </script>
+  </body>
+</html>
