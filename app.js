@@ -3,6 +3,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const { autoPostToGroups } = require("./puppeteer/autoPost");
+const { autoCommentToPosts } = require("./puppeteer/autoComment");
 
 const app = express();
 const port = 3000;
@@ -45,6 +46,7 @@ app.use("/uploads", express.static("uploads"));
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
+
 // Routes
 app.get("/", (req, res) => {
   res.render("index", {
@@ -53,6 +55,39 @@ app.get("/", (req, res) => {
     error: null,
     result: null,
   });
+});
+
+// Trang auto comment
+app.get("/comment", (req, res) => {
+  let posts = [];
+  try {
+    posts = JSON.parse(fs.readFileSync(path.join(__dirname, "posted_links.json"), "utf8"));
+  } catch (err) {}
+  res.render("comment", { posts });
+});
+
+// Nhận comment và ảnh để auto comment lên các post
+app.post("/comment", upload.array("images", 5), async (req, res) => {
+  const { comment } = req.body;
+  let postLinks = req.body.postLinks;
+  if (!Array.isArray(postLinks) && postLinks) postLinks = [postLinks];
+  const imagePaths = req.files ? req.files.map((file) => file.path) : [];
+  try {
+    const result = await autoCommentToPosts(comment, postLinks, imagePaths);
+    res.render("index", {
+      title: "Facebook Auto Post",
+      message: "Đăng comment thành công!",
+      error: null,
+      result: result,
+    });
+  } catch (err) {
+    res.render("index", {
+      title: "Facebook Auto Post",
+      message: null,
+      error: err.message,
+      result: null,
+    });
+  }
 });
 
 app.post("/post", upload.array("images", 5), async (req, res) => {
@@ -71,6 +106,15 @@ app.post("/post", upload.array("images", 5), async (req, res) => {
       error: null,
       result: result,
     });
+
+    // Xoá file ảnh đã upload sau khi đăng bài xong
+    if (imagePaths.length > 0) {
+      for (const img of imagePaths) {
+        fs.unlink(img, (err) => {
+          if (err) console.log("Không thể xóa file:", img, err.message);
+        });
+      }
+    }
   } catch (error) {
     console.error("Lỗi:", error);
     res.render("index", {

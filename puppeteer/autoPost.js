@@ -14,16 +14,14 @@ async function autoPostToGroups(content, groupLinks, imagePaths = []) {
 
   const postedLinks = [];
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  const maxRetries = 3;
 
   for (const groupLink of groupLinks) {
     try {
-      console.log(`Đang đăng bài vào nhóm: ${groupLink}`);
 
       // Truy cập vào nhóm
       await page.goto(groupLink, {
         waitUntil: "networkidle2",
-        timeout: 40000,
+        timeout: 10000
       });
       await wait(5000);
 
@@ -39,11 +37,68 @@ async function autoPostToGroups(content, groupLinks, imagePaths = []) {
         );
         if (createPostButton) createPostButton.click();
       });
-      await wait(3000);
 
       // Nhập nội dung bài viết
+      // 1. Focus lại vào vùng nhập trước khi nhập text
+      await page.evaluate(() => {
+        let editable = Array.from(document.querySelectorAll('div[contenteditable="true"]')).find(el =>
+          (el.getAttribute('role') === 'textbox') ||
+          (el.getAttribute('aria-label') && el.getAttribute('aria-label').toLowerCase().includes('write')) ||
+          (el.getAttribute('aria-placeholder') && el.getAttribute('aria-placeholder').toLowerCase().includes('write'))
+        );
+        if (!editable) editable = document.querySelector('div[contenteditable="true"]');
+        if (editable) editable.focus();
+      });
+      await wait(2000); // Đảm bảo đã focus
       await page.keyboard.type(content);
-      await wait(2000);
+
+      // 2. Paste ảnh clipboard nếu có ảnh
+      if (imagePaths && imagePaths.length > 0) {
+        for (let i = 0; i < imagePaths.length; i++) {
+          try {
+            const mime = require("mime-types");
+            const imageBuffer = fs.readFileSync(imagePaths[i]);
+            const base64 = imageBuffer.toString('base64');
+            const mimeType = mime.lookup(imagePaths[i]) || "image/png";
+      
+            const pasteResult = await page.evaluate(async (base64, mimeType) => {
+              function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
+                const byteCharacters = atob(b64Data);
+                const byteArrays = [];
+                for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+                  const slice = byteCharacters.slice(offset, offset + sliceSize);
+                  const byteNumbers = new Array(slice.length);
+                  for (let i = 0; i < slice.length; i++) {
+                    byteNumbers[i] = slice.charCodeAt(i);
+                  }
+                  const byteArray = new Uint8Array(byteNumbers);
+                  byteArrays.push(byteArray);
+                }
+                return new Blob(byteArrays, { type: contentType });
+              }
+              if (navigator.clipboard && window.ClipboardItem) {
+                const blob = b64toBlob(base64, mimeType);
+                const item = new window.ClipboardItem({ [mimeType]: blob });
+                await navigator.clipboard.write([item]);
+                return { ok: true, msg: 'Đã paste clipboard', hasClipboard: true };
+              } else {
+                return { ok: false, msg: 'Clipboard API không hỗ trợ', hasClipboard: false };
+              }
+            }, base64, mimeType);
+      
+            if (pasteResult.ok && pasteResult.hasClipboard) {1
+              await page.keyboard.down('Control');
+              await page.keyboard.press('v');
+              await page.keyboard.up('Control');
+              // Đợi cho ảnh preview hiện lên (nên tăng lên 2-3 giây hoặc hơn tuỳ tốc độ mạng)
+              await wait(1000);
+            }
+          } catch (err) {
+            console.log("Không thể paste ảnh clipboard:", err.message);
+          }
+        }
+      }
+      await wait(1000);
 
       // Click nút Post
       await page.evaluate(() => {
@@ -58,9 +113,16 @@ async function autoPostToGroups(content, groupLinks, imagePaths = []) {
           postButton.click();
         }
       });
+      await wait(9000);
 
+      // Cuộn chuột xuống 300px sau khi post bài
+      await page.evaluate(() => {
+        const percent = 0.1; // 20%
+        const scrollY = document.body.scrollHeight * percent;
+        window.scrollTo(0, scrollY);
+      });
       console.log("Đang đợi bài đăng xuất hiện...");
-      await wait(20000);
+      await wait(1000);
 
       // Bước 1: Tìm div và thẻ a đầu tiên
       const firstLinkInfo = await page.evaluate(() => {
@@ -87,11 +149,6 @@ async function autoPostToGroups(content, groupLinks, imagePaths = []) {
       });
 
       if (firstLinkInfo) {
-        console.log("✅ Tìm thấy thẻ <a> đầu tiên:");
-        console.log(" - Href:", firstLinkInfo.href);
-        console.log(" - Text length:", firstLinkInfo.text.length);
-        console.log(" - Div index:", firstLinkInfo.divIndex);
-
         // Hover vào thẻ a đầu tiên bằng Puppeteer
         await page
           .evaluate((linkInfo) => {
@@ -117,12 +174,11 @@ async function autoPostToGroups(content, groupLinks, imagePaths = []) {
           .then(async (position) => {
             if (position) {
               await page.mouse.move(position.x, position.y);
-              console.log("✅ Đã hover vào thẻ <a> tại vị trí:", position);
             }
           });
 
         // Đợi animation hoàn thành
-        await wait(3000);
+        await wait(1000);
 
         // Bước 2: Tìm lại div và thẻ a sau khi hover
         const hoveredLinkInfo = await page.evaluate(() => {
@@ -154,14 +210,6 @@ async function autoPostToGroups(content, groupLinks, imagePaths = []) {
         });
 
         if (hoveredLinkInfo) {
-          console.log("\n=== THÔNG TIN THẺ <a> SAU KHI HOVER ===");
-          console.log("Href:", hoveredLinkInfo.href);
-          console.log("Class:", hoveredLinkInfo.className);
-          console.log("Attributes:", hoveredLinkInfo.attributes);
-          console.log("Inner HTML:", hoveredLinkInfo.innerHTML);
-          console.log("Outer HTML:", hoveredLinkInfo.outerHTML);
-          console.log("=====================================\n");
-
           // Click vào thẻ a sau khi hover
           await page.evaluate(() => {
             const targetDivs = Array.from(
@@ -180,10 +228,9 @@ async function autoPostToGroups(content, groupLinks, imagePaths = []) {
             }
           });
 
-          // Đợi trang mới load
-          await page.waitForNavigation({ waitUntil: "networkidle0" });
+          await wait(3000);
           const postLink = page.url();
-          console.log("✅ Link bài viết:", postLink);
+          console.log(postLink)
 
           postedLinks.push({
             group: groupLink,
@@ -193,7 +240,6 @@ async function autoPostToGroups(content, groupLinks, imagePaths = []) {
             postedAt: new Date().toISOString(),
           });
         } else {
-          console.log("❌ Không tìm thấy thẻ <a> sau khi hover");
           postedLinks.push({
             group: groupLink,
             status: "error",
@@ -203,7 +249,6 @@ async function autoPostToGroups(content, groupLinks, imagePaths = []) {
           });
         }
       } else {
-        console.log("❌ Không tìm thấy thẻ <a> phù hợp (text > 100).");
         postedLinks.push({
           group: groupLink,
           status: "error",
@@ -213,17 +258,13 @@ async function autoPostToGroups(content, groupLinks, imagePaths = []) {
         });
       }
     } catch (error) {
-      console.log(`❌ Lỗi: ${error.message}`);
 
       if (error.message.includes("Navigating frame was detached")) {
-        console.log("Đang tạo lại page mới...");
         try {
           await page.close().catch(() => {});
           page = await browser.newPage();
           await page.setCookie(...cookies);
-          console.log("✅ Đã tạo lại page mới.");
         } catch (pageError) {
-          console.log(`❌ Lỗi khi tạo lại page: ${pageError.message}`);
         }
       }
 
@@ -238,7 +279,7 @@ async function autoPostToGroups(content, groupLinks, imagePaths = []) {
   }
 
   // Không đóng browser để có thể xem kết quả
-  // await browser.close();
+  await browser.close();
   fs.writeFileSync("posted_links.json", JSON.stringify(postedLinks, null, 2));
   return postedLinks;
 }

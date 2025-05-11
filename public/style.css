@@ -1,0 +1,3 @@
+/* Style cho trang comment nếu cần */
+.image-preview img { max-width: 100px; margin-right: 8px; }
+.group-list { max-height: 250px; overflow-y: auto; border: 1px solid #eee; padding: 10px; margin-bottom: 1em; }
