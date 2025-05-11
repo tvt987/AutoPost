@@ -67,7 +67,7 @@ app.get("/comment", (req, res) => {
 });
 
 // Nhận comment và ảnh để auto comment lên các post
-app.post("/comment", upload.array("images", 5), async (req, res) => {
+app.post("/comment", upload.array("images", 1), async (req, res) => {
   const { comment } = req.body;
   let postLinks = req.body.postLinks;
   if (!Array.isArray(postLinks) && postLinks) postLinks = [postLinks];

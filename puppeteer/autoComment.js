@@ -18,8 +18,8 @@ async function autoCommentToPosts(comment, postLinks, imagePaths = []) {
   const results = [];
   for (const postLink of postLinks) {
     try {
-      await page.goto(postLink, { waitUntil: "networkidle2", timeout: 20000 });
-      await wait(3000);
+      await page.goto(postLink, { waitUntil: "networkidle2", timeout: 10000 });
+      await wait(2000);
 
       // Click vào ô comment
       await page.evaluate(() => {
@@ -28,18 +28,60 @@ async function autoCommentToPosts(comment, postLinks, imagePaths = []) {
           commentBox.focus();
         }
       });
-      await wait(4000);
-
-      // Gõ nội dung comment
-      await page.keyboard.type(comment, { delay: 20 });
-
-      // Nếu có ảnh thì tải lên (nâng cao: cần xử lý upload file input)
+      await wait(1000); // Đảm bảo đã focus
+            await page.keyboard.type(comment);
       
-      // Bỏ qua nếu chưa cần
+            // 2. Paste ảnh clipboard nếu có ảnh
+            if (imagePaths && imagePaths.length > 0) {
+              for (let i = 0; i < imagePaths.length; i++) {
+                try {
+                  const mime = require("mime-types");
+                  const imageBuffer = fs.readFileSync(imagePaths[i]);
+                  const base64 = imageBuffer.toString('base64');
+                  const mimeType = mime.lookup(imagePaths[i]) || "image/png";
+            
+                  const pasteResult = await page.evaluate(async (base64, mimeType) => {
+                    function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
+                      const byteCharacters = atob(b64Data);
+                      const byteArrays = [];
+                      for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+                        const slice = byteCharacters.slice(offset, offset + sliceSize);
+                        const byteNumbers = new Array(slice.length);
+                        for (let i = 0; i < slice.length; i++) {
+                          byteNumbers[i] = slice.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        byteArrays.push(byteArray);
+                      }
+                      return new Blob(byteArrays, { type: contentType });
+                    }
+                    if (navigator.clipboard && window.ClipboardItem) {
+                      const blob = b64toBlob(base64, mimeType);
+                      const item = new window.ClipboardItem({ [mimeType]: blob });
+                      await navigator.clipboard.write([item]);
+                      return { ok: true, msg: 'Đã paste clipboard', hasClipboard: true };
+                    } else {
+                      return { ok: false, msg: 'Clipboard API không hỗ trợ', hasClipboard: false };
+                    }
+                  }, base64, mimeType);
+            
+                  if (pasteResult.ok && pasteResult.hasClipboard) {1
+                    await page.keyboard.down('Control');
+                    await page.keyboard.press('v');
+                    await page.keyboard.up('Control');
+                    // Đợi cho ảnh preview hiện lên (nên tăng lên 2-3 giây hoặc hơn tuỳ tốc độ mạng)
+                    await wait(1000);
+                  }
+                } catch (err) {
+                  console.log("Không thể paste ảnh clipboard:", err.message);
+                }
+              }
+            }
+            await wait(1000);
 
       // Enter để gửi comment
       await page.keyboard.press("Enter");
-      await wait(2000);
+      await wait(1000);
 
       results.push({ post: postLink, status: "success" });
     } catch (err) {
